@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name         OPhim
-// @version      v0.0.1
+// @version      v0.0.4
 // @author       Gemini
 // @lang         vi
 // @license      MIT
@@ -23,7 +23,6 @@ export default class extends Extension {
     });
   }
 
-  // Hàm helper gọi API và xử lý JSON
   async fetchJson(url) {
     const apiDomain = await this.getSetting("api_domain");
     const res = await this.request("", {
@@ -32,30 +31,29 @@ export default class extends Extension {
     return typeof res === "object" ? res : JSON.parse(res);
   }
 
-  // Trang chủ: Phim mới cập nhật
   async latest(page) {
     const data = await this.fetchJson("/danh-sach/phim-moi-cap-nhat?page=" + page);
     return data.items.map((item) => ({
       title: item.name,
       url: item.slug,
-      cover: data.pathImage + item.thumb_url, // OPhim cần nối pathImage
+      // Cập nhật domain ảnh chuẩn từ link bạn cung cấp
+      cover: "https://img.ophim.live/uploads/movies/" + item.thumb_url,
       update: item.year ? "Năm " + item.year : "",
     }));
   }
 
-  // Tìm kiếm phim (Đã fix lỗi dấu tiếng Việt)
   async search(kw, page) {
     const encodedKw = encodeURIComponent(kw);
-    // Lưu ý: OPhim dùng v1/api/tim-kiem
     const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + encodedKw + "&limit=20&page=" + page);
+    
     return data.data.items.map((item) => ({
       title: item.name,
       url: item.slug,
-      cover: data.data.APP_DOMAIN_FRONTEND + "/api/v1/movie/show/image/" + item.thumb_url,
+      // Fix lỗi ảnh bìa mục tìm kiếm bằng domain img.ophim.live
+      cover: "https://img.ophim.live/uploads/movies/" + item.thumb_url,
     }));
   }
 
-  // Chi tiết phim và danh sách tập
   async detail(url) {
     const data = await this.fetchJson("/phim/" + url);
     const movie = data.movie;
@@ -70,13 +68,13 @@ export default class extends Extension {
 
     return {
       title: movie.name,
-      cover: movie.thumb_url,
+      // Ở trang chi tiết, nếu thumb_url đã có domain thì dùng luôn, không thì nối thêm
+      cover: movie.thumb_url.startsWith("http") ? movie.thumb_url : "https://img.ophim.live/uploads/movies/" + movie.thumb_url,
       desc: movie.content ? movie.content.replace(/<[^>]*>?/gm, "") : "Không có mô tả.",
       episodes: episodes,
     };
   }
 
-  // Trình phát Video
   async watch(url) {
     return {
       type: "hls",
