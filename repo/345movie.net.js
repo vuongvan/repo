@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name         KKPhim
-// @version      v0.0.2
+// @version      v0.0.3
 // @author       Gemini
 // @lang         vi
 // @license      MIT
@@ -23,13 +23,11 @@ export default class extends Extension {
     });
   }
 
-  // Hàm helper để xử lý JSON an toàn
   async fetchJson(url) {
     const apiDomain = await this.getSetting("api_domain");
     const res = await this.request("", {
       headers: { "Miru-Url": apiDomain + url },
     });
-    // Nếu res đã là object thì trả về luôn, nếu là string thì mới parse
     return typeof res === "object" ? res : JSON.parse(res);
   }
 
@@ -43,7 +41,9 @@ export default class extends Extension {
   }
 
   async search(kw, page) {
-    const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + kw + "&limit=20&page=" + page);
+    // SỬA LỖI TẠI ĐÂY: Mã hóa từ khóa để tránh lỗi ký tự đặc biệt/khoảng trắng
+    const encodedKw = encodeURIComponent(kw);
+    const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + encodedKw + "&limit=20&page=" + page);
     return data.data.items.map((item) => ({
       title: item.name,
       url: item.slug,
@@ -75,4 +75,4 @@ export default class extends Extension {
       url: url,
     };
   }
-        }
+}
