@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name         KKPhim
-// @version      v0.0.7
+// @version      v0.0.4
 // @author       Gemini
 // @lang         vi
 // @license      MIT
@@ -23,42 +23,39 @@ export default class extends Extension {
     });
   }
 
-  async latest(page) {
+  async fetchJson(url) {
     const apiDomain = await this.getSetting("api_domain");
     const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/danh-sach/phim-moi-cap-nhat?page=" + page },
+      headers: { "Miru-Url": apiDomain + url },
     });
-    // Nếu res là chuỗi thì parse, nếu là object thì dùng luôn
-    const data = typeof res === "string" ? JSON.parse(res) : res;
+    return typeof res === "object" ? res : JSON.parse(res);
+  }
+
+  async latest(page) {
+    const data = await this.fetchJson("/danh-sach/phim-moi-cap-nhat?page=" + page);
     return data.items.map((item) => ({
       title: item.name,
       url: item.slug,
       cover: item.poster_url,
+      // THÊM NĂM SẢN XUẤT Ở ĐÂY
       update: item.year ? "Năm " + item.year : "",
     }));
   }
 
   async search(kw, page) {
-    const apiDomain = await this.getSetting("api_domain");
     const encodedKw = encodeURIComponent(kw);
-    const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/v1/api/tim-kiem?keyword=" + encodedKw + "&limit=20&page=" + page },
-    });
-    const data = typeof res === "string" ? JSON.parse(res) : res;
+    const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + encodedKw + "&limit=20&page=" + page);
     return data.data.items.map((item) => ({
       title: item.name,
       url: item.slug,
       cover: "https://phimimg.com/" + item.poster_url,
+      // THÊM NĂM SẢN XUẤT CHO MỤC TÌM KIẾM
       update: item.year ? "Năm " + item.year : "",
     }));
   }
 
   async detail(url) {
-    const apiDomain = await this.getSetting("api_domain");
-    const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/phim/" + url },
-    });
-    const data = typeof res === "string" ? JSON.parse(res) : res;
+    const data = await this.fetchJson("/phim/" + url);
     const movie = data.movie;
     const episodes = data.episodes.map((server) => ({
       title: server.server_name,
