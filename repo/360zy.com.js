@@ -1,145 +1,86 @@
 // ==MiruExtension==
-// @name         360资源
-// @version      v0.0.2
-// @author       hualiong
-// @lang         zh-cn
+// @name         OPhim
+// @version      v0.0.1
+// @author       Gemini
+// @lang         vi
 // @license      MIT
-// @icon         https://360zy.com/favicon.ico
-// @package      360zy.com
 // @type         bangumi
-// @webSite      https://360zy.com
+// @icon         https://ophim17.cc/logo-ophim.png
+// @package      ophim.api
+// @webSite      https://ophim17.cc
 // @nsfw         false
+// @tags         phim, vietsub, phimle, phimbo
 // ==/MiruExtension==
+
 export default class extends Extension {
-  genres = {};
-
-  domains = {
-    primary: [
-      "360zy.com",
-      "360zy.net",
-      "360zy.top",
-      "360zy.tv",
-    ],
-    alternate: [
-      "360zy1.com",
-      "360zy2.com",
-      "360zy3.com",
-      "360zy4.com",
-      "360zy5.com",
-      "360zy6.com",
-      "360zy7.com",
-      "360zy8.com",
-      "360zy9.com",
-      "360zy10.com",
-    ],
-  };
-
-  dict = new Map([
-    ["&nbsp;", " "],
-    ["&quot;", '"'],
-    ["&lt;", "<"],
-    ["&gt;", ">"],
-    ["&amp;", "&"],
-    ["&sdot;", "·"],
-  ]);
-
-  text(content) {
-    if (!content) return "";
-    const str =
-      [...content.matchAll(/>([^<]+?)</g)]
-        .map((m) => m[1])
-        .join("")
-        .trim() || content;
-    return str.replace(/&[a-z]+;/g, (c) => this.dict.get(c) || c);
-  }
-
-  async $get(params, count = 2, timeout = 4000) {
-    const domains = count > 1 ? this.domains.primary : this.domains.alternate;
-    try {
-      const list = domains.map((domain) =>
-        this.request("/api.php/provide/vod?ac=detail" + params, {
-          headers: { "Miru-Url": `https://${domain}` },
-        })
-      );
-      list.push(
-        new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("Request timed out!"));
-          }, timeout);
-        })
-      );
-      return await Promise.any(list);
-    } catch (error) {
-      if (count > 1) {
-        console.log(`[Retry (${count})]: ${params}`);
-        return this.$get(params, count - 1);
-      } else {
-        throw error;
-      }
-    }
-  }
-
   async load() {
-    const res = await this.$get("&ac=list");
-    res.class.forEach((e) => {
-      this.genres[e.type_id] = e.type_name;
+    this.registerSetting({
+      title: "OPhim API",
+      key: "api_domain",
+      type: "input",
+      description: "API Domain của OPhim",
+      defaultValue: "https://ophim1.com",
     });
   }
 
-  async createFilter() {
-    const genres = {
-      title: "影片类型",
-      max: 1,
-      min: 0,
-      default: "",
-      options: this.genres,
-    };
-    return { genres };
+  // Hàm helper gọi API và xử lý JSON
+  async fetchJson(url) {
+    const apiDomain = await this.getSetting("api_domain");
+    const res = await this.request("", {
+      headers: { "Miru-Url": apiDomain + url },
+    });
+    return typeof res === "object" ? res : JSON.parse(res);
   }
 
+  // Trang chủ: Phim mới cập nhật
   async latest(page) {
-    const h = (new Date().getUTCHours() + 9) % 24;
-    const res = await this.$get(`&pg=${page}&h=${h || 24}`);
-    return res.list.map((e) => ({
-      title: e.vod_name,
-      url: `${e.vod_id}`,
-      cover: e.vod_pic,
-      update: e.vod_remarks,
+    const data = await this.fetchJson("/danh-sach/phim-moi-cap-nhat?page=" + page);
+    return data.items.map((item) => ({
+      title: item.name,
+      url: item.slug,
+      cover: data.pathImage + item.thumb_url, // OPhim cần nối pathImage
+      update: item.year ? "Năm " + item.year : "",
     }));
   }
 
-  async search(kw, page, filter) {
-    if (!kw && !(filter?.genres?.[0])) {
-      return this.latest(page);
-    }
-    const res = await this.$get(`&wd=${kw}&t=${filter?.genres?.[0] ?? ""}&pg=${page}`);
-    return res.list.map((e) => ({
-      title: e.vod_name,
-      url: `${e.vod_id}`,
-      cover: e.vod_pic,
-      update: e.vod_remarks,
+  // Tìm kiếm phim (Đã fix lỗi dấu tiếng Việt)
+  async search(kw, page) {
+    const encodedKw = encodeURIComponent(kw);
+    // Lưu ý: OPhim dùng v1/api/tim-kiem
+    const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + encodedKw + "&limit=20&page=" + page);
+    return data.data.items.map((item) => ({
+      title: item.name,
+      url: item.slug,
+      cover: data.data.APP_DOMAIN_FRONTEND + "/api/v1/movie/show/image/" + item.thumb_url,
     }));
   }
 
-  async detail(id) {
-    let desc = "无";
-    const anime = (await this.$get(`&ids=${id}`)).list[0];
-    const blurb = this.text(anime.vod_blurb);
-    const content = this.text(anime.vod_content);
-    desc = desc.length < blurb?.length ? blurb : desc;
-    desc = desc.length < content.length ? content : desc;
-    const urls = anime.vod_play_url
-      .split("#")
-      .filter((e) => e)
-      .map((e) => {
-        const s = e.split("$");
-        return { name: s[0], url: s[1] };
-      });
-    return { title: anime.vod_name, cover: anime.vod_pic, desc, episodes: [{ title: this.name, urls }] };
+  // Chi tiết phim và danh sách tập
+  async detail(url) {
+    const data = await this.fetchJson("/phim/" + url);
+    const movie = data.movie;
+    
+    const episodes = data.episodes.map((server) => ({
+      title: server.server_name,
+      urls: server.server_data.map((item) => ({
+        name: "Tập " + item.name,
+        url: item.link_m3u8,
+      })),
+    }));
+
+    return {
+      title: movie.name,
+      cover: movie.thumb_url,
+      desc: movie.content ? movie.content.replace(/<[^>]*>?/gm, "") : "Không có mô tả.",
+      episodes: episodes,
+    };
   }
 
+  // Trình phát Video
   async watch(url) {
-    console.log(url);
-    return { type: "hls", url };
+    return {
+      type: "hls",
+      url: url,
+    };
   }
 }
