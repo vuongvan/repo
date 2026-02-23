@@ -1,6 +1,6 @@
 // ==MiruExtension==
 // @name         KKPhim
-// @version      v0.0.1
+// @version      v0.0.2
 // @author       Gemini
 // @lang         vi
 // @license      MIT
@@ -23,12 +23,18 @@ export default class extends Extension {
     });
   }
 
-  async latest(page) {
+  // Hàm helper để xử lý JSON an toàn
+  async fetchJson(url) {
     const apiDomain = await this.getSetting("api_domain");
     const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/danh-sach/phim-moi-cap-nhat?page=" + page },
+      headers: { "Miru-Url": apiDomain + url },
     });
-    const data = JSON.parse(res);
+    // Nếu res đã là object thì trả về luôn, nếu là string thì mới parse
+    return typeof res === "object" ? res : JSON.parse(res);
+  }
+
+  async latest(page) {
+    const data = await this.fetchJson("/danh-sach/phim-moi-cap-nhat?page=" + page);
     return data.items.map((item) => ({
       title: item.name,
       url: item.slug,
@@ -37,11 +43,7 @@ export default class extends Extension {
   }
 
   async search(kw, page) {
-    const apiDomain = await this.getSetting("api_domain");
-    const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/v1/api/tim-kiem?keyword=" + kw + "&limit=20&page=" + page },
-    });
-    const data = JSON.parse(res);
+    const data = await this.fetchJson("/v1/api/tim-kiem?keyword=" + kw + "&limit=20&page=" + page);
     return data.data.items.map((item) => ({
       title: item.name,
       url: item.slug,
@@ -50,11 +52,7 @@ export default class extends Extension {
   }
 
   async detail(url) {
-    const apiDomain = await this.getSetting("api_domain");
-    const res = await this.request("", {
-      headers: { "Miru-Url": apiDomain + "/phim/" + url },
-    });
-    const data = JSON.parse(res);
+    const data = await this.fetchJson("/phim/" + url);
     const movie = data.movie;
     const episodes = data.episodes.map((server) => ({
       title: server.server_name,
@@ -77,4 +75,4 @@ export default class extends Extension {
       url: url,
     };
   }
-}
+        }
