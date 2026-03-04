@@ -1,92 +1,92 @@
 // ==MiruExtension==
-// @name         AnimeWeb
+// @name         Tranh18
 // @version      v0.0.1
 // @author       Gemini
 // @lang         vi
 // @license      MIT
-// @type         bangumi
-// @icon         https://animeweb.vip/storage/images/logo.png
-// @package      animeweb.vip
-// @webSite      https://animeweb.vip
-// @nsfw         false
-// @tags         anime, vietsub, animeweb
+// @type         manga
+// @icon         https://m.tranh18.com/frontend/images/logo.png
+// @package      tranh18.com
+// @webSite      https://m.tranh18.com
+// @nsfw         true
+// @tags         truyen-tranh, 18+, manhua
 // ==/MiruExtension==
 
 export default class extends Extension {
-  async load() {
-    this.registerSetting({
-      title: "AnimeWeb API",
-      key: "api_domain",
-      type: "input",
-      description: "API Domain của AnimeWeb",
-      defaultValue: "https://animeweb.vip/api/v2",
-    });
-  }
-
-  async fetchJson(url) {
-    const apiDomain = await this.getSetting("api_domain");
-    const res = await this.request("", {
-      headers: { 
-        "Miru-Url": apiDomain + url,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Referer": "https://animeweb.vip/"
-      },
-    });
-    return typeof res === "object" ? res : JSON.parse(res);
-  }
-
   async latest(page) {
-    // API lấy danh sách anime mới cập nhật
-    const data = await this.fetchJson("/movie/filter?page=" + page + "&limit=20&sort=updated_at");
-    return data.data.map((item) => ({
-      title: item.name,
-      url: item.slug,
-      cover: item.poster_url || item.thumb_url,
-      update: item.current_episode ? "Tập " + item.current_episode : "Full",
-    }));
+    const res = await this.request(`/danh-sach?page=${page}`);
+    // Sử dụng querySelector để bóc tách dữ liệu từ HTML
+    const bs = this.querySelectorAll(res, "div.list-stories > ul > li");
+    const list = [];
+    bs.forEach((element) => {
+      const title = element.querySelector("h3 > a").text.trim();
+      const url = element.querySelector("a").getAttribute("href");
+      const cover = element.querySelector("img").getAttribute("data-src") || element.querySelector("img").getAttribute("src");
+      list.push({
+        title,
+        url,
+        cover,
+      });
+    });
+    return list;
   }
 
   async search(kw, page) {
-    const encodedKw = encodeURIComponent(kw);
-    const data = await this.fetchJson("/movie/filter?keyword=" + encodedKw + "&page=" + page + "&limit=20");
-    return data.data.map((item) => ({
-      title: item.name,
-      url: item.slug,
-      cover: item.poster_url || item.thumb_url,
-      update: item.year ? item.year.toString() : "",
-    }));
+    const res = await this.request(`/tim-kiem?q=${encodeURIComponent(kw)}&page=${page}`);
+    const bs = this.querySelectorAll(res, "div.list-stories > ul > li");
+    const list = [];
+    bs.forEach((element) => {
+      const title = element.querySelector("h3 > a").text.trim();
+      const url = element.querySelector("a").getAttribute("href");
+      const cover = element.querySelector("img").getAttribute("data-src") || element.querySelector("img").getAttribute("src");
+      list.push({
+        title,
+        url,
+        cover,
+      });
+    });
+    return list;
   }
 
   async detail(url) {
-    const data = await this.fetchJson("/movie/info/" + url);
-    const movie = data.data;
+    const res = await this.request(url);
+    const title = this.querySelector(res, "h1.title-story").text.trim();
+    const cover = this.querySelector(res, "div.info-story img").getAttribute("src");
+    const desc = this.querySelector(res, "div.summary-content").text.trim();
     
-    // AnimeWeb chia tập theo từng server hoặc danh sách tập trực tiếp
-    const episodes = [{
-      title: "Danh sách tập",
-      urls: movie.episodes.map((ep) => ({
-        name: "Tập " + ep.name,
-        url: ep.id.toString(), // Dùng ID tập để lấy link watch
-      })),
-    }];
+    // Lấy danh sách chương
+    const chapters = [];
+    const eps = this.querySelectorAll(res, "ul.list-chapters > li > a");
+    eps.forEach((element) => {
+      chapters.push({
+        name: element.text.trim(),
+        url: element.getAttribute("href"),
+      });
+    });
 
     return {
-      title: movie.name,
-      cover: movie.poster_url,
-      desc: movie.description ? movie.description.replace(/<[^>]*>?/gm, "") : "Không có mô tả.",
-      episodes: episodes,
+      title,
+      cover,
+      desc,
+      episodes: [{
+        title: "Danh sách chương",
+        urls: chapters.reverse(), // Đảo ngược để chương mới nhất lên đầu hoặc tùy chọn
+      }],
     };
   }
 
   async watch(url) {
-    // Gọi API để lấy link m3u8 từ episode ID
-    const data = await this.fetchJson("/episode/server/" + url);
-    // Lấy server đầu tiên có link m3u8
-    const playUrl = data.data[0].link_m3u8 || data.data[0].link_embed;
-
+    const res = await this.request(url);
+    const images = [];
+    // Bóc tách tất cả link ảnh trong chương truyện
+    const imgs = this.querySelectorAll(res, "div.reading-content img");
+    imgs.forEach((element) => {
+      const src = element.getAttribute("data-src") || element.getAttribute("src");
+      if (src) images.push(src);
+    });
+    
     return {
-      type: "hls",
-      url: playUrl,
+      urls: images,
     };
   }
 }
