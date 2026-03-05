@@ -1,10 +1,10 @@
 [
  {
-  "author": "Gemini",
+  "author": "VM",
   "icon": "https://ophim17.cc/logo-ophim.png",
   "lang": "vi",
   "license": "MIT",
-  "name": "OPhim",
+  "name": "Phim",
   "nsfw": "false",
   "package": "ophim.api",
   "tags": "phimbo",
