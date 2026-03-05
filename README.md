@@ -6,4 +6,4 @@ Miru extensions repository | [Miru App Download](https://github.com/miru-project
 ## List
 |  Name   | Package | Version | Author | Language | Type | Source |
 |  ----   | ---- | --- | ---  | ---  | --- | --- |
-| Phim | ophim.api | v0.3.0 | VM | vi | bangumi | [Source Code](https://github.com/miru-project/repo/raw/main/repo/ophim.com.js?raw=true) |
+| Phim | ophim.api | v0.3.0 | VM | vi | bangumi | [Source Code](https://github.com/vuongvan/repo/raw/main/repo/ophim.com.js?raw=true) |
