@@ -9,7 +9,7 @@
   "package": "ophim.api",
   "tags": "phimbo",
   "type": "bangumi",
-  "url": "ophim.com.js",
+  "url": "ophim.com.js?raw=true",
   "version": "v0.3.0",
   "webSite": "https://ophim17.cc"
  }
