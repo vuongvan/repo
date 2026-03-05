@@ -4,7 +4,7 @@
   "icon": "https://ophim17.cc/logo-ophim.png",
   "lang": "vi",
   "license": "MIT",
-  "name": "Phim",
+  "name": "O-Phim",
   "nsfw": "false",
   "package": "ophim.api",
   "tags": "phimbo",
