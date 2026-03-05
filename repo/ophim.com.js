@@ -1,5 +1,5 @@
 // ==MiruExtension==
-// @name         O Phim
+// @name         O-Phim
 // @version      v0.3.0
 // @author       VM
 // @lang         vi
