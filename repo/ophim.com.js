@@ -1,7 +1,7 @@
 // ==MiruExtension==
-// @name         OPhim
+// @name         Ổ Phim
 // @version      v0.3.0
-// @author       Gemini
+// @author       VM
 // @lang         vi
 // @license      MIT
 // @type         bangumi
