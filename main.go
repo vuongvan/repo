@@ -40,7 +40,7 @@ Miru extensions repository | [Miru App Download](https://github.com/miru-project
 `
 
 	for _, v := range extensions {
-		url := fmt.Sprintf("[Source Code](%s)", "https://github.com/miru-project/repo/blob/main/repo/"+v["url"])
+		url := fmt.Sprintf("[Source Code](%s)", "https://github.com/vuongvan/repo/blob/main/repo/"+v["url"])
 		nsfw := v["nsfw"] == "true"
 		if nsfw {
 			continue
