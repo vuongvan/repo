@@ -45,7 +45,7 @@ Miru extensions repository | [Miru App Download](https://github.com/miru-project
 	for _, v := range extensions {
 		// v["url"] lúc này đã bao gồm "?raw=true" từ hàm readRepoExtensions
 		// Thay đổi 'blob' thành 'raw' để link trực tiếp đến file code
-		rawUrl := "https://github.com/miru-project/repo/raw/main/repo/" + v["url"]
+		rawUrl := "https://github.com/vuongvan/repo/raw/main/repo/" + v["url"]
 		urlMarkdown := fmt.Sprintf("[Source Code](%s)", rawUrl)
 		
 		nsfw := v["nsfw"] == "true"
