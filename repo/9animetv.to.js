@@ -1,92 +1,91 @@
 // ==MiruExtension==
 // @name         Tranh18
-// @version      v0.0.1
-// @author       Gemini
+// @version      v0.1.0
+// @author       VuPhi
 // @lang         vi
 // @license      MIT
 // @type         manga
-// @icon         https://m.tranh18.com/frontend/images/logo.png
-// @package      tranh18.com
-// @webSite      https://m.tranh18.com
+// @icon         https://tranh18.com/favicon.ico
+// @package      tranh18.manga
+// @webSite      https://tranh18.com
 // @nsfw         true
-// @tags         truyen-tranh, 18+, manhua
+// @tags         manga, manhwa, 18+
 // ==/MiruExtension==
 
 export default class extends Extension {
-  async latest(page) {
-    const res = await this.request(`/danh-sach?page=${page}`);
-    // Sử dụng querySelector để bóc tách dữ liệu từ HTML
-    const bs = this.querySelectorAll(res, "div.list-stories > ul > li");
-    const list = [];
-    bs.forEach((element) => {
-      const title = element.querySelector("h3 > a").text.trim();
-      const url = element.querySelector("a").getAttribute("href");
-      const cover = element.querySelector("img").getAttribute("data-src") || element.querySelector("img").getAttribute("src");
-      list.push({
-        title,
-        url,
-        cover,
-      });
+  baseUrl = "https://tranh18.com";
+
+  async requestHtml(url) {
+    const res = await this.request(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": this.baseUrl
+      }
     });
-    return list;
+    return this.parseHtml(res);
   }
 
-  async search(kw, page) {
-    const res = await this.request(`/tim-kiem?q=${encodeURIComponent(kw)}&page=${page}`);
-    const bs = this.querySelectorAll(res, "div.list-stories > ul > li");
-    const list = [];
-    bs.forEach((element) => {
-      const title = element.querySelector("h3 > a").text.trim();
-      const url = element.querySelector("a").getAttribute("href");
-      const cover = element.querySelector("img").getAttribute("data-src") || element.querySelector("img").getAttribute("src");
-      list.push({
-        title,
-        url,
-        cover,
-      });
-    });
-    return list;
+  async latest(page) {
+    const doc = await this.requestHtml(this.baseUrl + "/page/" + page);
+
+    const list = [...doc.querySelectorAll(".bsx")];
+
+    return list.map(el => ({
+      title: el.querySelector(".tt")?.textContent.trim(),
+      url: el.querySelector("a")?.href,
+      cover: el.querySelector("img")?.src,
+      update: ""
+    }));
+  }
+
+  async search(keyword, page) {
+    const url = this.baseUrl + "/?s=" + encodeURIComponent(keyword) + "&page=" + page;
+
+    const doc = await this.requestHtml(url);
+
+    const list = [...doc.querySelectorAll(".bsx")];
+
+    return list.map(el => ({
+      title: el.querySelector(".tt")?.textContent.trim(),
+      url: el.querySelector("a")?.href,
+      cover: el.querySelector("img")?.src,
+      update: ""
+    }));
   }
 
   async detail(url) {
-    const res = await this.request(url);
-    const title = this.querySelector(res, "h1.title-story").text.trim();
-    const cover = this.querySelector(res, "div.info-story img").getAttribute("src");
-    const desc = this.querySelector(res, "div.summary-content").text.trim();
-    
-    // Lấy danh sách chương
-    const chapters = [];
-    const eps = this.querySelectorAll(res, "ul.list-chapters > li > a");
-    eps.forEach((element) => {
-      chapters.push({
-        name: element.text.trim(),
-        url: element.getAttribute("href"),
-      });
-    });
+    const doc = await this.requestHtml(url);
+
+    const title = doc.querySelector(".entry-title")?.textContent.trim();
+    const cover = doc.querySelector(".thumb img")?.src;
+    const desc = doc.querySelector(".entry-content")?.textContent.trim() || "";
+
+    const chapters = [...doc.querySelectorAll("#chapterlist li a")];
+
+    const episodes = [{
+      title: "Chapters",
+      urls: chapters.map(ch => ({
+        name: ch.textContent.trim(),
+        url: ch.href
+      })).reverse()
+    }];
 
     return {
-      title,
-      cover,
-      desc,
-      episodes: [{
-        title: "Danh sách chương",
-        urls: chapters.reverse(), // Đảo ngược để chương mới nhất lên đầu hoặc tùy chọn
-      }],
+      title: title,
+      cover: cover,
+      desc: desc,
+      episodes: episodes
     };
   }
 
   async watch(url) {
-    const res = await this.request(url);
-    const images = [];
-    // Bóc tách tất cả link ảnh trong chương truyện
-    const imgs = this.querySelectorAll(res, "div.reading-content img");
-    imgs.forEach((element) => {
-      const src = element.getAttribute("data-src") || element.getAttribute("src");
-      if (src) images.push(src);
-    });
-    
+    const doc = await this.requestHtml(url);
+
+    const imgs = [...doc.querySelectorAll(".reading-content img")];
+
     return {
-      urls: images,
+      type: "images",
+      urls: imgs.map(img => img.src)
     };
   }
-}
+  }
