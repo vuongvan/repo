@@ -1,26 +1,43 @@
-name: Go
+name: Build and Deploy Extensions
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
 
-    - name: Generage
-      run: go run ./...
-      
-    - name: Push new index.json
-      uses: mikeal/publish-to-github-action@master
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: 'main'
+      - name: Run Build Script
+        run: go run main.go
+
+      - name: Prepare Deployment Directory
+        run: |
+          mkdir deploy
+          cp index.json deploy/
+          cp README.md deploy/
+          cp -r repo deploy/
+          # Giữ lại các file cần thiết cho GitHub Pages nếu có (ví dụ .nojekyll)
+          touch deploy/.nojekyll 
+
+      - name: Deploy to Extensions Branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: extensions
+          publish_dir: ./deploy
+          force_orphan: true # Tạo lịch sử commit sạch cho branch extensions
+          
